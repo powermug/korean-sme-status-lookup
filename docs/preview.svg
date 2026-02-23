@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720" role="img" aria-label="Korean SME Status Lookup preview">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f3f7ff"/>
+      <stop offset="100%" stop-color="#e8fff4"/>
+    </linearGradient>
+    <linearGradient id="btn" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#1367b2"/>
+      <stop offset="100%" stop-color="#0a7b61"/>
+    </linearGradient>
+  </defs>
+  <rect width="1280" height="720" fill="url(#bg)"/>
+  <rect x="70" y="56" width="1140" height="120" rx="16" fill="#fff" stroke="#d6e0ea"/>
+  <text x="110" y="102" font-family="Arial, sans-serif" font-size="20" fill="#1367b2" font-weight="700">Korean SME Status Lookup</text>
+  <text x="110" y="144" font-family="Arial, sans-serif" font-size="34" fill="#122033" font-weight="700">중소기업현황정보시스템 실적 조회</text>
+
+  <rect x="70" y="196" width="1140" height="170" rx="16" fill="#fff" stroke="#d6e0ea"/>
+  <text x="110" y="238" font-family="Arial, sans-serif" font-size="17" fill="#122033" font-weight="700">검색어(사명)</text>
+  <rect x="110" y="254" width="680" height="44" rx="10" fill="#fff" stroke="#d6e0ea"/>
+  <text x="128" y="282" font-family="Arial, sans-serif" font-size="16" fill="#516078">예: 에이비씨</text>
+  <text x="110" y="324" font-family="Arial, sans-serif" font-size="17" fill="#122033" font-weight="700">정확 회사명(선택)</text>
+  <rect x="110" y="340" width="680" height="44" rx="10" fill="#fff" stroke="#d6e0ea"/>
+  <rect x="820" y="306" width="180" height="48" rx="24" fill="url(#btn)"/>
+  <text x="882" y="337" font-family="Arial, sans-serif" font-size="18" fill="#fff" font-weight="700">조회</text>
+
+  <rect x="70" y="390" width="560" height="270" rx="16" fill="#fff" stroke="#d6e0ea"/>
+  <text x="110" y="430" font-family="Arial, sans-serif" font-size="24" fill="#122033" font-weight="700">검색 결과</text>
+  <rect x="110" y="450" width="480" height="58" rx="10" fill="#f7fafc" stroke="#d6e0ea"/>
+  <text x="130" y="484" font-family="Arial, sans-serif" font-size="17" fill="#122033" font-weight="700">(주)에이비씨테크</text>
+  <rect x="110" y="520" width="480" height="58" rx="10" fill="#f7fafc" stroke="#d6e0ea"/>
+  <text x="130" y="554" font-family="Arial, sans-serif" font-size="17" fill="#122033" font-weight="700">에이비씨산업</text>
+
+  <rect x="650" y="390" width="560" height="270" rx="16" fill="#fff" stroke="#d6e0ea"/>
+  <text x="690" y="430" font-family="Arial, sans-serif" font-size="24" fill="#122033" font-weight="700">실적 표</text>
+  <rect x="690" y="452" width="480" height="168" rx="10" fill="#fff" stroke="#d6e0ea"/>
+  <line x1="690" y1="492" x2="1170" y2="492" stroke="#d6e0ea"/>
+  <line x1="690" y1="532" x2="1170" y2="532" stroke="#d6e0ea"/>
+  <line x1="690" y1="572" x2="1170" y2="572" stroke="#d6e0ea"/>
+  <line x1="850" y1="452" x2="850" y2="620" stroke="#d6e0ea"/>
+  <line x1="1010" y1="452" x2="1010" y2="620" stroke="#d6e0ea"/>
+  <text x="715" y="480" font-family="Arial, sans-serif" font-size="16" fill="#122033" font-weight="700">항목</text>
+  <text x="885" y="480" font-family="Arial, sans-serif" font-size="16" fill="#122033" font-weight="700">2023</text>
+  <text x="1045" y="480" font-family="Arial, sans-serif" font-size="16" fill="#122033" font-weight="700">2024</text>
+
+  <text x="70" y="695" font-family="Arial, sans-serif" font-size="14" fill="#6b7a90">Illustrative preview</text>
+</svg>
