@@ -92,7 +92,6 @@ _CANDIDATE_TABLE_EXTRACT_SCRIPT = """
 
     const row = normalize(rowText);
     const hay = (n + " " + row).toLowerCase();
-    if (kw && !hay.includes(kw)) return;
 
     let score = 0;
     if (kw) {
@@ -125,6 +124,70 @@ _CANDIDATE_TABLE_EXTRACT_SCRIPT = """
   });
 
   return out;
+}
+"""
+
+_GENERIC_LINK_CANDIDATE_SCRIPT = """
+(keyword) => {
+  const normalize = (s) => (s || "").replace(/\\s+/g, " ").trim();
+  const kw = normalize(keyword).toLowerCase();
+  const out = [];
+
+  const blockedExact = new Set([
+    "로그인", "회원가입", "홈", "사이트맵", "검색", "조회", "닫기",
+    "메뉴", "다음", "이전", "상세보기", "more"
+  ]);
+
+  const links = Array.from(document.querySelectorAll("a"));
+  links.forEach((a) => {
+    const text = normalize(a.innerText || a.textContent || "");
+    if (!text) return;
+    if (text.length < 2 || text.length > 70) return;
+
+    const lower = text.toLowerCase();
+    if (blockedExact.has(lower)) return;
+
+    let score = 0;
+    if (kw) {
+      if (lower === kw) score += 100;
+      if (lower.includes(kw)) score += 60;
+    }
+
+    out.push({
+      name: text,
+      row_text: "",
+      table_title: "",
+      match_score: score,
+    });
+  });
+
+  return out;
+}
+"""
+
+_JS_SUBMIT_SEARCH_SCRIPT = """
+({ keyword }) => {
+  const form = document.forms["search"] || document.querySelector("form[name='search']");
+  if (!form) return false;
+
+  const setValue = (name, value) => {
+    if (!form[name]) return;
+    form[name].value = value;
+  };
+
+  setValue("cmQuery", keyword);
+  setValue("cmQueryEncoding", encodeURIComponent(keyword));
+  setValue("cmQueryOption", "00");
+  setValue("cmPageNo", "1");
+  setValue("mode", "");
+  setValue("clickcontrol", "disable");
+  setValue("htmlvalue", keyword);
+
+  form.method = "post";
+  form.target = "_self";
+  form.action = "/gc/sf/GSF002R0.print";
+  form.submit();
+  return true;
 }
 """
 
@@ -282,7 +345,7 @@ class SminfoClient:
             page = context.new_page()
             page.set_default_timeout(self.timeout_ms)
 
-            self._open_search_page_via_post(page, query=query)
+            self._open_search_page_via_post(page, query="")
 
             if self._is_login_page(page):
                 browser.close()
@@ -290,10 +353,20 @@ class SminfoClient:
                     "로그인 세션이 만료되었습니다. login 명령으로 다시 로그인하세요."
                 )
 
+            self._submit_search_query(page, query)
             candidates = self._extract_candidates(page, query)
             if not candidates:
-                self._fill_query_and_submit(page, query)
-                candidates = self._extract_candidates(page, query)
+                result_count = self._read_result_count(page)
+                if result_count == 0:
+                    browser.close()
+                    raise SearchError(
+                        f"'{query}' 검색 결과가 0건입니다. (사이트 제한 또는 조회 조건 문제일 수 있습니다.)"
+                    )
+
+                browser.close()
+                raise SearchError(
+                    f"'{query}' 검색 결과 후보를 찾지 못했습니다. 로그인 세션을 갱신 후 다시 시도하세요."
+                )
 
             selected = self._choose_candidate(candidates, company_name)
             tables: list[TableData] = []
@@ -374,10 +447,10 @@ class SminfoClient:
         )
         self._wait_for_page_settle(page)
 
-    def _fill_query_and_submit(self, page: Page, query: str) -> None:
+    def _fill_query_and_submit(self, page: Page, query: str) -> bool:
         query_input = self._find_first_visible_locator(page, _QUERY_INPUT_SELECTORS)
         if query_input is None:
-            raise SearchError("검색 입력 필드를 찾지 못했습니다.")
+            return False
 
         query_input.fill(query)
         query_input.press("Enter")
@@ -389,13 +462,64 @@ class SminfoClient:
             if button:
                 button.click()
                 self._wait_for_page_settle(page)
+        return True
+
+    def _submit_search_query(self, page: Page, query: str) -> bool:
+        try:
+            submitted = page.evaluate(_JS_SUBMIT_SEARCH_SCRIPT, {"keyword": query})
+        except Exception:
+            submitted = False
+
+        if submitted:
+            self._wait_for_page_settle(page)
+            return True
+
+        # 검색 스크립트 진입이 실패하면 초기 POST 방식으로 재시도
+        self._open_search_page_via_post(page, query=query)
+        return True
 
     def _extract_candidates(self, page: Page, query: str) -> list[Candidate]:
         deduped: dict[tuple[str, str], Candidate] = {}
 
+        self._merge_candidate_rows(
+            page=page,
+            script=_CANDIDATE_TABLE_EXTRACT_SCRIPT,
+            query=query,
+            deduped=deduped,
+        )
+
+        if not deduped:
+            self._merge_candidate_rows(
+                page=page,
+                script=_GENERIC_LINK_CANDIDATE_SCRIPT,
+                query=query,
+                deduped=deduped,
+            )
+
+        ordered = sorted(
+            deduped.values(),
+            key=lambda c: (c.match_score, len(c.row_text), -len(c.name), c.name),
+            reverse=True,
+        )
+
+        if query:
+            matched = [candidate for candidate in ordered if candidate.match_score > 0]
+            if matched:
+                return matched[:50]
+            return []
+
+        return ordered[:50]
+
+    def _merge_candidate_rows(
+        self,
+        page: Page,
+        script: str,
+        query: str,
+        deduped: dict[tuple[str, str], Candidate],
+    ) -> None:
         for frame in page.frames:
             try:
-                raw = frame.evaluate(_CANDIDATE_TABLE_EXTRACT_SCRIPT, query)
+                raw = frame.evaluate(script, query)
             except Exception:
                 continue
 
@@ -421,13 +545,6 @@ class SminfoClient:
                 )
                 if prev is None or candidate.match_score > prev.match_score:
                     deduped[key] = candidate
-
-        ordered = sorted(
-            deduped.values(),
-            key=lambda c: (c.match_score, len(c.row_text), c.name),
-            reverse=True,
-        )
-        return ordered[:50]
 
     def _choose_candidate(
         self,
@@ -590,6 +707,27 @@ class SminfoClient:
         except PlaywrightTimeoutError:
             pass
         page.wait_for_timeout(700)
+
+    def _read_result_count(self, page: Page) -> int | None:
+        try:
+            raw = page.main_frame.evaluate(
+                """
+                () => {
+                  const text = (document.body && document.body.innerText) || "";
+                  const match = text.match(/검색결과\\s*([0-9,]+)\\s*건/);
+                  return match ? match[1] : null;
+                }
+                """
+            )
+        except Exception:
+            return None
+
+        if raw is None:
+            return None
+        try:
+            return int(str(raw).replace(",", "").strip())
+        except ValueError:
+            return None
 
     def _launch_browser(self, pw: Playwright, headless: bool) -> Browser:
         channel = self.browser_channel.lower()
