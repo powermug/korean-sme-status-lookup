@@ -44,6 +44,8 @@
       </div>
       {% else %}
       <div class="notice ok">
+        <strong>{{ login_status_text }}</strong>
+        <br>
         세션 경로: <code>{{ state_path }}</code>
       </div>
       {% endif %}

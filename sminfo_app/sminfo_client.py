@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+import os
 import re
 import time
 from pathlib import Path
@@ -11,6 +13,7 @@ from playwright.sync_api import Browser, Locator, Page, Playwright, sync_playwri
 from .config import (
     BASE_URL,
     DEFAULT_BROWSER_CHANNEL,
+    DEFAULT_META_PATH,
     DEFAULT_STATE_PATH,
     DEFAULT_TIMEOUT_MS,
     SEARCH_MENU_ID,
@@ -271,17 +274,45 @@ class SminfoClient:
     def __init__(
         self,
         state_path: str | Path | None = None,
+        meta_path: str | Path | None = None,
         headless: bool = True,
         timeout_ms: int = DEFAULT_TIMEOUT_MS,
         browser_channel: str | None = DEFAULT_BROWSER_CHANNEL,
     ) -> None:
         self.state_path = Path(state_path) if state_path else DEFAULT_STATE_PATH
+        self.meta_path = Path(meta_path) if meta_path else DEFAULT_META_PATH
         self.headless = headless
         self.timeout_ms = timeout_ms
         self.browser_channel = (browser_channel or "").strip()
 
     def has_saved_session(self) -> bool:
         return self.state_path.exists()
+
+    def get_saved_username(self) -> str | None:
+        if not self.meta_path.exists():
+            env_name = self._normalize_space(os.getenv("SMINFO_ID", ""))
+            return env_name or None
+
+        try:
+            raw = json.loads(self.meta_path.read_text(encoding="utf-8"))
+        except Exception:
+            env_name = self._normalize_space(os.getenv("SMINFO_ID", ""))
+            return env_name or None
+
+        username = self._normalize_space(str(raw.get("username", "")))
+        if username:
+            return username
+
+        env_name = self._normalize_space(os.getenv("SMINFO_ID", ""))
+        return env_name or None
+
+    def get_login_status_text(self) -> str:
+        username = self.get_saved_username()
+        if username:
+            return f'"{username}"으로 로그인 중'
+        if self.has_saved_session():
+            return "로그인 세션 사용 중"
+        return "로그인 세션 없음"
 
     def login(
         self,
@@ -318,6 +349,9 @@ class SminfoClient:
                 browser.close()
                 raise NotLoggedInError("로그인에 실패했습니다. 아이디/비밀번호를 확인하세요.")
 
+            detected_username = self._extract_logged_in_username(page)
+            fallback_username = self._normalize_space(username or "")
+            self._write_session_meta(detected_username or fallback_username or None)
             context.storage_state(path=str(self.state_path))
             browser.close()
 
@@ -707,6 +741,56 @@ class SminfoClient:
         except PlaywrightTimeoutError:
             pass
         page.wait_for_timeout(700)
+
+    def _extract_logged_in_username(self, page: Page) -> str | None:
+        script = """
+        () => {
+          const normalize = (s) => (s || "").replace(/\\s+/g, " ").trim();
+          const blocked = new Set(["로그인", "로그아웃", "회원가입", "나의정보"]);
+          const out = [];
+
+          const push = (value) => {
+            const v = normalize(value);
+            if (!v) return;
+            if (v.length < 2 || v.length > 60) return;
+            if (blocked.has(v)) return;
+            out.push(v);
+          };
+
+          document.querySelectorAll("input[name='cmId'], input[name='id']").forEach((input) => {
+            push(input.value || input.getAttribute("value") || "");
+          });
+
+          const profileNode = document.querySelector(".user, .my_info, .member, .login_info");
+          if (profileNode) push(profileNode.textContent || "");
+
+          const anchors = Array.from(document.querySelectorAll("a"));
+          anchors.forEach((a) => {
+            const t = normalize(a.innerText || a.textContent || "");
+            if (t.endsWith("님")) push(t.replace(/님$/, ""));
+          });
+
+          const unique = Array.from(new Set(out));
+          return unique.length ? unique[0] : null;
+        }
+        """
+        for frame in page.frames:
+            try:
+                raw = frame.evaluate(script)
+            except Exception:
+                continue
+            username = self._normalize_space(str(raw or ""))
+            if username:
+                return username
+        return None
+
+    def _write_session_meta(self, username: str | None) -> None:
+        self.meta_path.parent.mkdir(parents=True, exist_ok=True)
+        payload = {"username": self._normalize_space(username or ""), "saved_at": int(time.time())}
+        self.meta_path.write_text(
+            json.dumps(payload, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
 
     def _read_result_count(self, page: Page) -> int | None:
         try:

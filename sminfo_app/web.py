@@ -29,6 +29,7 @@ def create_app() -> Flask:
             result=None,
             error=None,
             has_session=client.has_saved_session(),
+            login_status_text=client.get_login_status_text(),
             state_path=str(client.state_path),
         )
 
@@ -47,6 +48,7 @@ def create_app() -> Flask:
                 result=None,
                 error="검색어를 입력하세요.",
                 has_session=client.has_saved_session(),
+                login_status_text=client.get_login_status_text(),
                 state_path=str(client.state_path),
             )
 
@@ -64,6 +66,7 @@ def create_app() -> Flask:
             result=result,
             error=error,
             has_session=client.has_saved_session(),
+            login_status_text=client.get_login_status_text(),
             state_path=str(client.state_path),
         )
 
