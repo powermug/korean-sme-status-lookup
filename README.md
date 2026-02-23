@@ -11,7 +11,7 @@ Automation toolkit for searching Korean corporate records on `https://sminfo.mss
 
 - Python 3.11+
 - Flask
-- Playwright (Chromium)
+- Playwright (default: local Chrome channel)
 - Gunicorn (production web server)
 
 ## Architecture
@@ -22,7 +22,7 @@ flowchart LR
   U --> C["CLI"]
   W --> CORE["SminfoClient"]
   C --> CORE
-  CORE --> PW["Playwright Chromium"]
+  CORE --> PW["Playwright Browser (Chrome/Chromium)"]
   PW --> SM["sminfo.mss.go.kr"]
   CORE --> ST["Session State (.data/storage_state.json)"]
   CORE --> OUT["Extracted Tables (JSON/UI)"]
@@ -35,6 +35,12 @@ cd /Users/jeonghoon/Documents/CodexApp/korean-sme-status-lookup
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
+```
+
+Local default runs with installed Google Chrome.
+If you want bundled browser fallback, install Chromium once:
+
+```bash
 playwright install chromium
 ```
 
@@ -83,6 +89,7 @@ Copy from `.env.example` and override as needed:
 
 - `SMINFO_TIMEOUT_MS`
 - `SMINFO_STATE_PATH`
+- `SMINFO_BROWSER_CHANNEL` (`chrome` by default, set `chromium` for server env)
 - `FLASK_DEBUG`
 - `PORT`
 

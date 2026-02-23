@@ -9,3 +9,5 @@ services:
         value: 3.11.11
       - key: SMINFO_TIMEOUT_MS
         value: 60000
+      - key: SMINFO_BROWSER_CHANNEL
+        value: chromium

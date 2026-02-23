@@ -4,10 +4,18 @@ import re
 import time
 from pathlib import Path
 
+from playwright.sync_api import Error as PlaywrightError
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
-from playwright.sync_api import Locator, Page, sync_playwright
+from playwright.sync_api import Browser, Locator, Page, Playwright, sync_playwright
 
-from .config import BASE_URL, DEFAULT_STATE_PATH, DEFAULT_TIMEOUT_MS, SEARCH_MENU_ID, SEARCH_PATH
+from .config import (
+    BASE_URL,
+    DEFAULT_BROWSER_CHANNEL,
+    DEFAULT_STATE_PATH,
+    DEFAULT_TIMEOUT_MS,
+    SEARCH_MENU_ID,
+    SEARCH_PATH,
+)
 from .models import Candidate, SearchResult, TableData
 
 _FINANCIAL_KEYWORDS = (
@@ -202,10 +210,12 @@ class SminfoClient:
         state_path: str | Path | None = None,
         headless: bool = True,
         timeout_ms: int = DEFAULT_TIMEOUT_MS,
+        browser_channel: str | None = DEFAULT_BROWSER_CHANNEL,
     ) -> None:
         self.state_path = Path(state_path) if state_path else DEFAULT_STATE_PATH
         self.headless = headless
         self.timeout_ms = timeout_ms
+        self.browser_channel = (browser_channel or "").strip()
 
     def has_saved_session(self) -> bool:
         return self.state_path.exists()
@@ -220,7 +230,7 @@ class SminfoClient:
         self.state_path.parent.mkdir(parents=True, exist_ok=True)
 
         with sync_playwright() as pw:
-            browser = pw.chromium.launch(headless=headless)
+            browser = self._launch_browser(pw, headless=headless)
             context = browser.new_context(locale="ko-KR")
             page = context.new_page()
             page.set_default_timeout(self.timeout_ms)
@@ -265,7 +275,7 @@ class SminfoClient:
             )
 
         with sync_playwright() as pw:
-            browser = pw.chromium.launch(headless=self.headless)
+            browser = self._launch_browser(pw, headless=self.headless)
             context = browser.new_context(
                 storage_state=str(self.state_path), locale="ko-KR"
             )
@@ -580,6 +590,19 @@ class SminfoClient:
         except PlaywrightTimeoutError:
             pass
         page.wait_for_timeout(700)
+
+    def _launch_browser(self, pw: Playwright, headless: bool) -> Browser:
+        channel = self.browser_channel.lower()
+        if not channel or channel == "chromium":
+            return pw.chromium.launch(headless=headless)
+
+        try:
+            return pw.chromium.launch(headless=headless, channel=channel)
+        except PlaywrightError as exc:
+            print(
+                f"경고: 브라우저 채널 '{channel}' 실행 실패. Chromium으로 전환합니다. ({exc})"
+            )
+            return pw.chromium.launch(headless=headless)
 
     @staticmethod
     def _normalize_space(value: str) -> str:

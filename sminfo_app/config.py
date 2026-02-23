@@ -13,3 +13,4 @@ DEFAULT_STATE_PATH = Path(
     os.getenv("SMINFO_STATE_PATH", str(DATA_DIR / "storage_state.json"))
 )
 DEFAULT_TIMEOUT_MS = int(os.getenv("SMINFO_TIMEOUT_MS", "45000"))
+DEFAULT_BROWSER_CHANNEL = os.getenv("SMINFO_BROWSER_CHANNEL", "chrome").strip()
