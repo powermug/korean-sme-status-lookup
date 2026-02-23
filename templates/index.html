@@ -17,7 +17,7 @@
     </section>
 
     <section class="card">
-      <form method="post" class="query-form">
+      <form method="post" class="query-form" id="query-form">
         <label>
           검색어(사명)
           <input type="text" name="query" value="{{ query }}" placeholder="예: 에이비씨" required>
@@ -28,6 +28,12 @@
         </label>
         <button type="submit">조회</button>
       </form>
+      <div class="loading-status" id="loading-status" hidden aria-live="polite">
+        <span id="loading-message">검색 중</span>
+        <span class="loading-dots" aria-hidden="true">
+          <span></span><span></span><span></span>
+        </span>
+      </div>
 
       {% if not has_session %}
       <div class="notice warn">
@@ -48,7 +54,7 @@
     </section>
 
     {% if result %}
-    <section class="card">
+    <section class="card result-section">
       <h2>검색 결과</h2>
       <p>
         검색어: <strong>{{ result.query }}</strong>
@@ -87,7 +93,7 @@
     </section>
 
     {% if result.performance_tables %}
-    <section class="card">
+    <section class="card result-section">
       <h2>실적 표</h2>
       {% for table in result.performance_tables %}
       <article class="table-card">
@@ -120,5 +126,49 @@
     {% endif %}
     {% endif %}
   </main>
+  <script>
+    (() => {
+      const forms = Array.from(document.querySelectorAll("form[method='post']"));
+      if (!forms.length) return;
+
+      const loadingStatus = document.getElementById("loading-status");
+      const loadingMessage = document.getElementById("loading-message");
+
+      const startLoading = (form) => {
+        if (document.body.classList.contains("is-loading")) return;
+
+        const data = new FormData(form);
+        const query = (data.get("query") || "").toString().trim();
+        const company = (data.get("company") || "").toString().trim();
+        const target = company || query || "입력한 회사";
+
+        document.body.classList.add("is-loading");
+
+        if (loadingStatus && loadingMessage) {
+          loadingMessage.textContent = `"${target}" 검색 중`;
+          loadingStatus.hidden = false;
+        }
+
+        document.querySelectorAll("button[type='submit']").forEach((button) => {
+          button.disabled = true;
+        });
+
+        const mainButton = document.querySelector("#query-form button[type='submit']");
+        if (mainButton) {
+          mainButton.textContent = "조회 중...";
+        }
+      };
+
+      forms.forEach((form) => {
+        form.addEventListener("submit", (event) => {
+          if (document.body.classList.contains("is-loading")) {
+            event.preventDefault();
+            return;
+          }
+          startLoading(form);
+        });
+      });
+    })();
+  </script>
 </body>
 </html>

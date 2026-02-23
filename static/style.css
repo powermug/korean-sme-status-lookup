@@ -116,6 +116,69 @@ button.minor {
   color: #194d83;
 }
 
+button:disabled {
+  opacity: 0.72;
+  cursor: wait;
+  filter: saturate(0.7);
+}
+
+.loading-status {
+  margin-top: 12px;
+  border: 1px dashed #bcd1e6;
+  border-radius: 10px;
+  background: #f4f8ff;
+  color: #1d436c;
+  font-size: 14px;
+  font-weight: 700;
+  padding: 10px 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.loading-status[hidden] {
+  display: none;
+}
+
+.loading-dots {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.loading-dots span {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #2e6baa;
+  animation: dot-bounce 1.2s infinite ease-in-out;
+}
+
+.loading-dots span:nth-child(2) {
+  animation-delay: 0.16s;
+}
+
+.loading-dots span:nth-child(3) {
+  animation-delay: 0.32s;
+}
+
+@keyframes dot-bounce {
+  0%,
+  80%,
+  100% {
+    opacity: 0.35;
+    transform: translateY(0);
+  }
+  40% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+
+body.is-loading .result-section {
+  display: none;
+}
+
 .notice {
   margin-top: 12px;
   border: 1px solid var(--line);
